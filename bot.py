@@ -1,7 +1,7 @@
 import logging
 import openai
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Set up logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 openai.api_key = 'YOUR_OPENAI_API_KEY'
 
 # Function to start the bot and greet the user
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Hi! Send me any Hindi text, and I'll translate it to English using ChatGPT.")
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Hi! Send me any Hindi text, and I'll translate it to English using ChatGPT.")
 
 # Function to handle translation using ChatGPT
-def translate_to_english(update: Update, context: CallbackContext) -> None:
+async def translate_to_english(update: Update, context: CallbackContext) -> None:
     hindi_text = update.message.text
 
     # Use OpenAI's ChatGPT to translate the text
@@ -32,10 +32,10 @@ def translate_to_english(update: Update, context: CallbackContext) -> None:
         translated_text = response.choices[0].text.strip()
 
         # Send the translated text back to the user
-        update.message.reply_text(f"Translated text: {translated_text}")
+        await update.message.reply_text(f"Translated text: {translated_text}")
 
     except Exception as e:
-        update.message.reply_text("Sorry, something went wrong. Please try again later.")
+        await update.message.reply_text("Sorry, something went wrong. Please try again later.")
         logger.error(f"Error while translating: {e}")
 
 # Error handler
@@ -44,25 +44,19 @@ def error(update: Update, context: CallbackContext) -> None:
 
 def main():
     # Set up the Telegram bot with your token
-    updater = Updater("7456531687:AAEq9pNuJgTkdUK3fmzP60vCacisBbU2xl4")
-
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+    application = Application.builder().token("YOUR_TELEGRAM_BOT_API_KEY").build()
 
     # Command handler for the /start command
-    dispatcher.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start))
 
     # Message handler for translating Hindi text to English
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, translate_to_english))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, translate_to_english))
 
     # Error handler
-    dispatcher.add_error_handler(error)
+    application.add_error_handler(error)
 
-    # Start polling for messages
-    updater.start_polling()
-
-    # Run the bot until you stop it manually
-    updater.idle()
+    # Start the bot
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
