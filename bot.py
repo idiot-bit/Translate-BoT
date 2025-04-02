@@ -1,47 +1,63 @@
-import os
+import openai
 import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
-import openai
+import os
 
-# Get API keys from environment variables
-openai.api_key = os.getenv('OPENAI_API_KEY')
-telegram_token = os.getenv('TELEGRAM_API_TOKEN')
-
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+# Set up logging
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Function to handle /start command
+# OpenAI API Key and Telegram Token
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Ensure to set this in your environment variables
+TELEGRAM_API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")  # Set this environment variable
+
+# Command handler for /start command
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text('Hello! Send me a message in Hindi and I will translate it to English.')
+    """Send a message when the command /start is issued."""
+    await update.message.reply_text("Hello! I am your translation bot. Send me a text, and I will translate it.")
 
-# Function to handle messages
+# Function to translate text using OpenAI API
 async def translate(update: Update, context: CallbackContext) -> None:
-    hindi_text = update.message.text
-    response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",  # or gpt-4
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Translate this text"}
-    ]
-)
-    english_translation = response.choices[0].text.strip()
-    await update.message.reply_text(f"Translation: {english_translation}")
+    """Translate text using OpenAI API."""
+    user_input = update.message.text
+    try:
+        # Sending request to OpenAI API (You can modify the prompt as needed)
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo",  # Or use "gpt-4" if available
+            prompt=f"Translate the following text to English: {user_input}",
+            max_tokens=100
+        )
 
-# Main function to set up the bot
+        # Send the translation result
+        translated_text = response.choices[0].text.strip()
+        await update.message.reply_text(f"Translated Text: {translated_text}")
+    
+    except openai.error.OpenAIError as e:
+        await update.message.reply_text(f"Error occurred while translating: {str(e)}")
+
+# Function to echo messages
+async def echo(update: Update, context: CallbackContext) -> None:
+    """Echo the user message."""
+    await update.message.reply_text(update.message.text)
+
 def main():
-    application = Application.builder().token(telegram_token).build()
+    """Start the bot and set up handlers."""
+    # Set up the application with the provided bot token
+    application = Application.builder().token(TELEGRAM_API_TOKEN).build()
 
-    # Register the /start command handler
+    # Command handler for /start
     application.add_handler(CommandHandler("start", start))
 
-    # Register message handler for text messages
+    # Message handler to handle text messages (for translation)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, translate))
 
-    # Start the Bot
+    # Add handler for echoing messages if no translation is needed
+    application.add_handler(MessageHandler(filters.TEXT & filters.COMMAND, echo))
+
+    # Run the bot with polling
     application.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
