@@ -1,52 +1,53 @@
-import openai
+import logging
+from google.cloud import translate_v2 as translate
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import CallbackContext
 
-# Replace these with your own keys
-TELEGRAM_API_KEY = '7456531687:AAEq9pNuJgTkdUK3fmzP60vCacisBbU2xl4'
-OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY'
+# Enable logging for debugging purposes
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Set up OpenAI API
-openai.api_key = OPENAI_API_KEY
+# Initialize the Google Translate API client
+translate_client = translate.Client()
 
-# Function to translate informal Hindi to English using OpenAI GPT model
-def translate_text(input_text: str) -> str:
+# Command handler to handle /start command
+async def start(update: Update, context: CallbackContext) -> None:
+    """Send a welcome message when the /start command is issued."""
+    await update.message.reply_text('Hello! Send me any message in Hindi, and I will translate it to English.')
+
+# Function to translate Hindi to English
+async def translate_message(update: Update, context: CallbackContext) -> None:
+    """Translate the message received in Hindi to English."""
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",  # You can use GPT-4 if available
-            prompt=f"Translate this text from informal Hindi to English: {input_text}",
-            max_tokens=100,
-            temperature=0.3,
-        )
-        translation = response.choices[0].text.strip()
-        return translation
+        text_to_translate = update.message.text  # The message to be translated
+        if text_to_translate.lower() == "/start":
+            return  # Ignore the start command as it's handled already.
+
+        # Translate the message from Hindi to English
+        translation = translate_client.translate(text_to_translate, target_language='en', source_language='hi')
+        translated_text = translation['translatedText']
+        
+        # Send the translated text back to the user
+        await update.message.reply_text(f"Original (Hindi): {text_to_translate}\nTranslated (English): {translated_text}")
+    
     except Exception as e:
-        print(f"Error: {e}")
-        return "Sorry, there was an error processing your request."
+        logger.error(f"Error while processing message: {str(e)}")
+        await update.message.reply_text("Sorry, there was an error processing your request.")
 
-# Command to start the bot
-async def start(update: Update, context) -> None:
-    await update.message.reply_text("Hello! Send me a message in informal Hindi, and I'll translate it to English.")
+def main() -> None:
+    """Start the bot and set up the handlers."""
+    TELEGRAM_API_KEY = 'YOUR_TELEGRAM_BOT_API_KEY'  # Replace with your actual token
 
-# Function to handle messages
-async def handle_message(update: Update, context) -> None:
-    user_message = update.message.text
-
-    if user_message:
-        # Translate informal Hindi to English
-        translated_text = translate_text(user_message)
-        await update.message.reply_text(translated_text)
-
-# Main function to run the bot
-def main():
-    # Set up the Application and Dispatcher (no 'use_context' argument)
+    # Create the Application and set the bot token
     application = Application.builder().token(TELEGRAM_API_KEY).build()
 
-    # Command and message handler
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # Add handlers for /start and text messages
+    application.add_handler(CommandHandler("start", start))  # /start command handler
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, translate_message))  # Text message handler
 
-    # Start the bot
+    # Run the bot
     application.run_polling()
 
 if __name__ == '__main__':
