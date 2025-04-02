@@ -44,7 +44,7 @@ def error(update: Update, context: CallbackContext) -> None:
 
 def main():
     # Set up the Telegram bot with your token
-    updater = Updater("YOUR_TELEGRAM_BOT_API_KEY")
+    updater = Updater("7456531687:AAEq9pNuJgTkdUK3fmzP60vCacisBbU2xl4")
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
