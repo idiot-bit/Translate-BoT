@@ -20,12 +20,13 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Function to handle messages
 async def translate(update: Update, context: CallbackContext) -> None:
     hindi_text = update.message.text
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=f"Translate the following Hindi text to English: {hindi_text}",
-        temperature=0.5,
-        max_tokens=100
-    )
+    response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",  # or gpt-4
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Translate this text"}
+    ]
+)
     english_translation = response.choices[0].text.strip()
     await update.message.reply_text(f"Translation: {english_translation}")
 
