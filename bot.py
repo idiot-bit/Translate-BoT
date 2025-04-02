@@ -1,6 +1,6 @@
 import openai
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Replace these with your own keys
 TELEGRAM_API_KEY = 'YOUR_TELEGRAM_BOT_API_KEY'
