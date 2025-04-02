@@ -1,54 +1,68 @@
 import logging
-from google.cloud import translate_v2 as translate
+import openai
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from telegram.ext import CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-# Enable logging for debugging purposes
+# Set up logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize the Google Translate API client
-translate_client = translate.Client()
+# Set your OpenAI API key
+openai.api_key = 'YOUR_OPENAI_API_KEY'
 
-# Command handler to handle /start command
-async def start(update: Update, context: CallbackContext) -> None:
-    """Send a welcome message when the /start command is issued."""
-    await update.message.reply_text('Hello! Send me any message in Hindi, and I will translate it to English.')
+# Function to start the bot and greet the user
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text("Hi! Send me any Hindi text, and I'll translate it to English using ChatGPT.")
 
-# Function to translate Hindi to English
-async def translate_message(update: Update, context: CallbackContext) -> None:
-    """Translate the message received in Hindi to English."""
+# Function to handle translation using ChatGPT
+def translate_to_english(update: Update, context: CallbackContext) -> None:
+    hindi_text = update.message.text
+
+    # Use OpenAI's ChatGPT to translate the text
     try:
-        text_to_translate = update.message.text  # The message to be translated
-        if text_to_translate.lower() == "/start":
-            return  # Ignore the start command as it's handled already.
+        response = openai.Completion.create(
+            model="gpt-4",  # You can use GPT-3.5 or GPT-4 depending on your access
+            prompt=f"Translate the following Hindi text to English:\n\n{hindi_text}",
+            temperature=0.5,
+            max_tokens=100
+        )
 
-        # Translate the message from Hindi to English
-        translation = translate_client.translate(text_to_translate, target_language='en', source_language='hi')
-        translated_text = translation['translatedText']
-        
+        # Get the translation from the response
+        translated_text = response.choices[0].text.strip()
+
         # Send the translated text back to the user
-        await update.message.reply_text(f"Original (Hindi): {text_to_translate}\nTranslated (English): {translated_text}")
-    
+        update.message.reply_text(f"Translated text: {translated_text}")
+
     except Exception as e:
-        logger.error(f"Error while processing message: {str(e)}")
-        await update.message.reply_text("Sorry, there was an error processing your request.")
+        update.message.reply_text("Sorry, something went wrong. Please try again later.")
+        logger.error(f"Error while translating: {e}")
 
-def main() -> None:
-    """Start the bot and set up the handlers."""
-    TELEGRAM_API_KEY = 'YOUR_TELEGRAM_BOT_API_KEY'  # Replace with your actual token
+# Error handler
+def error(update: Update, context: CallbackContext) -> None:
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
 
-    # Create the Application and set the bot token
-    application = Application.builder().token(TELEGRAM_API_KEY).build()
+def main():
+    # Set up the Telegram bot with your token
+    updater = Updater("YOUR_TELEGRAM_BOT_API_KEY")
 
-    # Add handlers for /start and text messages
-    application.add_handler(CommandHandler("start", start))  # /start command handler
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, translate_message))  # Text message handler
+    # Get the dispatcher to register handlers
+    dispatcher = updater.dispatcher
 
-    # Run the bot
-    application.run_polling()
+    # Command handler for the /start command
+    dispatcher.add_handler(CommandHandler("start", start))
+
+    # Message handler for translating Hindi text to English
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, translate_to_english))
+
+    # Error handler
+    dispatcher.add_error_handler(error)
+
+    # Start polling for messages
+    updater.start_polling()
+
+    # Run the bot until you stop it manually
+    updater.idle()
 
 if __name__ == '__main__':
     main()
