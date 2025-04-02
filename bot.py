@@ -1,6 +1,6 @@
 import openai
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 # Replace these with your own keys
 TELEGRAM_API_KEY = 'YOUR_TELEGRAM_BOT_API_KEY'
@@ -25,31 +25,29 @@ def translate_text(input_text: str) -> str:
         return "Sorry, there was an error processing your request."
 
 # Command to start the bot
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text("Hello! Send me a message in informal Hindi, and I'll translate it to English.")
+async def start(update: Update, context) -> None:
+    await update.message.reply_text("Hello! Send me a message in informal Hindi, and I'll translate it to English.")
 
 # Function to handle messages
-def handle_message(update: Update, context: CallbackContext) -> None:
+async def handle_message(update: Update, context) -> None:
     user_message = update.message.text
 
     if user_message:
         # Translate informal Hindi to English
         translated_text = translate_text(user_message)
-        update.message.reply_text(translated_text)
+        await update.message.reply_text(translated_text)
 
 # Main function to run the bot
 def main():
-    # Set up the Updater and Dispatcher
-    updater = Updater(TELEGRAM_API_KEY, use_context=True)
-    dispatcher = updater.dispatcher
+    # Set up the Application and Dispatcher (no 'use_context' argument)
+    application = Application.builder().token(TELEGRAM_API_KEY).build()
 
     # Command and message handler
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Start the bot
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
